@@ -32,8 +32,9 @@ namespace GitScc
         private string repositoryPath;
         private IEnumerable<string> remotes;
         private IDictionary<string, string> configs;
-        FileSystemWatcher _watcher;
-        private MemoryCache _fileCache;
+        //FileSystemWatcher _watcher;
+        CachingFileSystemWatcher _watcher;
+        //private MemoryCache _fileCache;
         private object _repoUpdateLock = new object();
         private List<GitBranchInfo> _branchInfoList;
 
@@ -48,17 +49,17 @@ namespace GitScc
 
         private event EventHandler<string> _onBranchChanged;
 
-        public event GitFileUpdateEventHandler FileChanged
-        {
-            add
-            {
-                _onFileUpdateEventHandler += value;
-            }
-            remove
-            {
-                _onFileUpdateEventHandler -= value;
-            }
-        }
+        //public event GitFileUpdateEventHandler FileChanged
+        //{
+        //    add
+        //    {
+        //        _onFileUpdateEventHandler += value;
+        //    }
+        //    remove
+        //    {
+        //        _onFileUpdateEventHandler -= value;
+        //    }
+        //}
 
         public event GitFilesUpdateEventHandler FilesChanged
         {
@@ -111,21 +112,76 @@ namespace GitScc
 
         public void EnableRepositoryWatcher()
         {
-            _watcher = new FileSystemWatcher(workingDirectory);
-            _watcher.NotifyFilter =
-                            NotifyFilters.FileName
-                            | NotifyFilters.Attributes
-                            | NotifyFilters.LastWrite
-                            | NotifyFilters.Size
-                            | NotifyFilters.CreationTime
-                            | NotifyFilters.DirectoryName;
-
-            _watcher.IncludeSubdirectories = true;
-            _watcher.Changed += HandleFileSystemChanged;
-            _watcher.Created += HandleFileSystemChanged;
-            _watcher.Deleted += HandleFileSystemChanged;
-            _watcher.Renamed += HandleFileSystemChanged;
+            _watcher = new CachingFileSystemWatcher(workingDirectory);
+            _watcher.FilesChanged += _watcher_FilesChanged;
             _watcher.EnableRaisingEvents = true;
+        }
+
+        private async void _watcher_FilesChanged(object sender, CachingFileSystemEventArgs e)
+        {
+            try
+            {
+                await Task.Run(() => CreateGitFilesEvent(e.FileCollection));
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("Error In File System Changed Event: " + ex.Message);
+            }
+        }
+
+
+        private void CreateGitFilesEvent(List<string> files)
+        {
+            var gitSystemEvent = false;
+            var changedFiles = new List<string>();
+
+            foreach (var file in files)
+            {
+                var extension = Path.GetExtension(file)?.ToLower();
+
+                if (extension != null && (string.Equals(extension, ".suo") || extension.EndsWith("~")))
+                {
+                    return;
+                }
+
+                if (string.Equals(extension, ".tmp"))
+                {
+                    if (file.Contains("~RF") || file.Contains("\\ve-"))
+                    {
+                        return;
+                    }
+                }
+                
+                if (file.IsSubPathOf(repositoryPath))
+                {
+                    gitSystemEvent = true;
+                }
+
+                else
+                {
+                    using (var repository = GetRepository())
+                    {
+                        if (repository.Ignore.IsPathIgnored(file.Remove(0, WorkingDirectory.Length)))
+                        {
+                            return;
+                        }
+                        else
+                        {
+                           changedFiles.Add(file);
+                        }
+                    }
+
+                }
+            }
+
+            if (gitSystemEvent)
+            {
+                HandleGitFileSystemChange();
+            }
+            if (changedFiles.Count > 0)
+            {
+                FireFilesChangedEvent(changedFiles);
+            }
         }
 
         private async void HandleFileSystemChanged(object sender, FileSystemEventArgs e)
@@ -179,11 +235,8 @@ namespace GitScc
                 }
                 else
                 {
-                        //if ((DateTime.UtcNow - _lastFileEvent).TotalSeconds > _fileEventDelay)
-                        //
                             FireFileChangedEvent(filename, fullPath);
-                        //    _lastFileEvent = DateTime.UtcNow;
-                        //}
+
                 }
                 }
 

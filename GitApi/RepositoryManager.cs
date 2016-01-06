@@ -96,7 +96,7 @@ namespace GitScc
         {
             foreach (var repo in _repositories)
             {
-                repo.FileChanged -= Repo_FileChanged;
+                //repo.FileChanged -= Repo_FileChanged;
                 repo.FilesChanged -= Repo_FilesChanged;
             }
 
@@ -150,7 +150,7 @@ namespace GitScc
                 {
                     repo = new GitFileStatusTracker(basePath);
                     repo.EnableRepositoryWatcher();
-                    repo.FileChanged += Repo_FileChanged;
+                    //repo.FileChanged += Repo_FileChanged;
                     repo.FilesChanged += Repo_FilesChanged;
                     //repo.BranchChanged += Repo_BranchChanged;
 
@@ -171,17 +171,17 @@ namespace GitScc
 
         #region Public Events
 
-        public event GitFileUpdateEventHandler FileChanged
-        {
-            add
-            {
-                _onFileUpdateEventHandler += value;
-            }
-            remove
-            {
-                _onFileUpdateEventHandler -= value;
-            }
-        }
+        //public event GitFileUpdateEventHandler FileChanged
+        //{
+        //    add
+        //    {
+        //        _onFileUpdateEventHandler += value;
+        //    }
+        //    remove
+        //    {
+        //        _onFileUpdateEventHandler -= value;
+        //    }
+        //}
 
         public event GitFilesUpdateEventHandler FilesChanged
         {

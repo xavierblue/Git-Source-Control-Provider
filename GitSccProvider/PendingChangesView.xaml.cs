@@ -72,13 +72,13 @@ namespace GitScc
             {
                 if (_tracker != null)
                 {
-                    _tracker.FileChanged -= CurrentTracker_FileChanged;
+                    //_tracker.FileChanged -= CurrentTracker_FileChanged;
                     CurrentTracker.FilesChanged -= CurrentTracker_FilesChanged;
                     CurrentTracker.BranchChanged -= CurrentTracker_BranchChanged;
 
                 }
                 _tracker = tracker;
-                CurrentTracker.FileChanged += CurrentTracker_FileChanged;
+                //CurrentTracker.FileChanged += CurrentTracker_FileChanged;
                 CurrentTracker.FilesChanged += CurrentTracker_FilesChanged;
                 CurrentTracker.BranchChanged += CurrentTracker_BranchChanged;
             }

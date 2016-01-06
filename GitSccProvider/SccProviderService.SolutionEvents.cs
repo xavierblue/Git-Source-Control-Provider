@@ -111,6 +111,8 @@ namespace GitScc
                     nodes.Add(vsItem);
                     RefreshNodesGlyphs(nodes);
                 //}
+                //Not the best place to put it... but it works. 
+                SetSolutionExplorerTitle();
             }
 
             return VSConstants.S_OK;

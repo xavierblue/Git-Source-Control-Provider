@@ -50,6 +50,7 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CachingFileSystemWatcher.cs" />
     <Compile Include="DataServices\Change.cs" />
     <Compile Include="DataServices\Commit.cs" />
     <Compile Include="DataServices\GitTreeObject.cs" />

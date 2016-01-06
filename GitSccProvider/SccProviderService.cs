@@ -60,7 +60,7 @@ namespace GitScc
             this._sccProvider = sccProvider;
             _fileCache = new SccProviderSolutionCache(_sccProvider);
 
-            RepositoryManager.Instance.FileChanged += RepositoryManager_FileChanged;
+            //RepositoryManager.Instance.FileChanged += RepositoryManager_FileChanged;
             RepositoryManager.Instance.FilesChanged += RepositoryManager_FilesChanged;
             RepositoryManager.Instance.SolutionTrackerBranchChanged += RepositoryManager_SolutionTrackerBranchChanged;
             //this.trackers = trackers;
@@ -564,28 +564,28 @@ namespace GitScc
             }
         }
 
-        private async void RepositoryManager_FileChanged(object sender, GitFileUpdateEventArgs e)
-        {
-            //TODO update files change here
+        //private async void RepositoryManager_FileChanged(object sender, GitFileUpdateEventArgs e)
+        //{
+        //    //TODO update files change here
 
-            try
-            {
-                ProcessSingleFileSystemChange((GitRepository)sender, e);
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine("Error in RepositoryManager_FileChanged: " + ex.Message);
-            }
-            //Action action = () => ProcessSingleFileSystemChange((GitRepository)sender, e);
-            //Task.Factory.StartNew(action, CancellationToken.None, TaskCreationOptions.None, SccProviderService.TaskScheduler)
-            //    .HandleNonCriticalExceptions();
-        }
+        //    try
+        //    {
+        //        ProcessSingleFileSystemChange((GitRepository)sender, e);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        Debug.WriteLine("Error in RepositoryManager_FileChanged: " + ex.Message);
+        //    }
+        //    //Action action = () => ProcessSingleFileSystemChange((GitRepository)sender, e);
+        //    //Task.Factory.StartNew(action, CancellationToken.None, TaskCreationOptions.None, SccProviderService.TaskScheduler)
+        //    //    .HandleNonCriticalExceptions();
+        //}
 
         private async void RepositoryManager_FilesChanged(object sender, GitFilesUpdateEventArgs e)
         {
             try
             {
-                await Task.Run(() => ProcessMultiFileChange((GitRepository) sender, e));
+                await ProcessMultiFileChange((GitRepository) sender, e);
             }
             catch (Exception ex)
             {
@@ -639,35 +639,71 @@ namespace GitScc
            // }
         }
 
-        private void ProcessMultiFileChange(GitRepository repo, GitFilesUpdateEventArgs e)
+        private async Task ProcessMultiFileChange(GitRepository repo, GitFilesUpdateEventArgs e)
         {
-            lock (_glyphsLock)
+            await Task.Run(async delegate
             {
-                HashSet<VSITEMSELECTION> nodes = new HashSet<VSITEMSELECTION>();
-                foreach (var file in e.Files)
+                await RefreshSolutionExplorer(repo, e.Files);
+            });
+
+
+            //HashSet<VSITEMSELECTION> nodes = new HashSet<VSITEMSELECTION>();
+            //    foreach (var file in e.Files)
+            //    {
+            //        var items = _fileCache.GetProjectsSelectionForFile(file);
+            //        if (items != null)
+            //        {
+            //            foreach (var vsitemselection in items)
+            //            {
+            //                nodes.Add(vsitemselection);
+            //            }
+            //        }
+            //    }
+            //    if (nodes.Count > 0)
+            //    {
+            //        RefreshNodesGlyphs(nodes.ToList());
+            //    }
+
+            //    //todo maybe move this
+            //    var caption = "Solution Explorer";
+            //    string branch = CurrentBranchName;
+            //    if (!string.IsNullOrEmpty(branch))
+            //    {
+            //        caption += " (" + branch + ")";
+            //        SetSolutionExplorerTitle(caption);
+            //    }
+
+        }
+
+        private async Task RefreshSolutionExplorer(GitRepository repo, List<string> files)
+        {
+            await Task.Run(() => repo.Refresh());
+            HashSet<VSITEMSELECTION> nodes = new HashSet<VSITEMSELECTION>();
+            foreach (var file in files)
+            {
+                var items = _fileCache.GetProjectsSelectionForFile(file);
+                if (items != null)
                 {
-                    var items = _fileCache.GetProjectsSelectionForFile(file);
-                    if (items != null)
+                    foreach (var vsitemselection in items)
                     {
-                        foreach (var vsitemselection in items)
-                        {
-                            nodes.Add(vsitemselection);
-                        }
+                        nodes.Add(vsitemselection);
                     }
                 }
-                if (nodes.Count > 0)
-                {
-                    RefreshNodesGlyphs(nodes.ToList());
-                }
+            }
+            if (nodes.Count > 0)
+            {
+                await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+                RefreshNodesGlyphs(nodes.ToList());
+            }
 
-                //todo maybe move this
-                var caption = "Solution Explorer";
-                string branch = CurrentBranchName;
-                if (!string.IsNullOrEmpty(branch))
-                {
-                    caption += " (" + branch + ")";
-                    SetSolutionExplorerTitle(caption);
-                }
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            //todo maybe move this
+            var caption = "Solution Explorer";
+            string branch = CurrentBranchName;
+            if (!string.IsNullOrEmpty(branch))
+            {
+                caption += " (" + branch + ")";
+                SetSolutionExplorerTitle(caption);
             }
         }
 
